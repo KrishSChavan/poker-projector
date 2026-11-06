@@ -3,6 +3,7 @@
 
 import { calibrationPoints } from './calibration.js';
 import { connect } from './connection.js';
+import { storedHostKey } from './host-key.js';
 import { createMarkers } from './markers.js';
 import { createWall } from './wall.js';
 
@@ -144,6 +145,7 @@ keepScreenAwake();
 
 connection = connect({
   role: 'output',
+  key: storedHostKey(),
   onMessage,
   onStatus: (status) => {
     if (status === 'connected') reportSize();

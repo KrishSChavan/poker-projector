@@ -172,9 +172,10 @@ function assertRefused(reply, code) {
   assert.equal(typeof reply.message, 'string');
 }
 
-function request(port, target, { address = LOOPBACK, host, method = 'GET' } = {}) {
+function request(port, target, { address = LOOPBACK, host, method = 'GET', key } = {}) {
   return new Promise((resolve, reject) => {
     const headers = host === undefined ? {} : { Host: host };
+    if (key !== undefined) headers.Authorization = `Bearer ${key}`;
     const call = http.request({ host: address, port, path: target, method, headers, agent: false });
     call.on('error', reject);
     call.on('response', (response) => {
@@ -261,6 +262,7 @@ test('a new socket gets welcome, then one each of calibration, session and game'
     'blocked',
     'canControl',
     'connectionId',
+    'isHosted',
     'retryInMs',
     'type',
   ]);
@@ -2328,6 +2330,129 @@ test('a paired phone can not change the code', onLan, async (t) => {
   assertRefused(await dealer.ask({ type: 'pairing:new' }), 'forbidden');
   assert.equal((await pairingOf(server)).code, code);
   assert.equal(dealer.socket.readyState, WebSocket.OPEN);
+});
+
+/* ---------- Hosted ---------- */
+
+const PUBLIC_HOST = 'poker.example.com';
+const PASSWORD = 'correct-horse-battery';
+
+const bootHosted = (t, options) =>
+  boot(t, { publicUrl: `https://${PUBLIC_HOST}`, hostPassword: PASSWORD, ...options });
+
+async function joinHosted(server, { role = 'control', key } = {}) {
+  const peer = createPeer(socketUrl(server), { headers: { Host: PUBLIC_HOST } });
+  await peer.opened;
+  peer.send({ type: 'hello', role, key });
+  peer.welcome = await peer.next();
+  peer.calibration = await peer.next();
+  peer.session = await peer.next();
+  peer.game = await peer.next();
+  return peer;
+}
+
+const hostedPairing = async (server) => {
+  const options = { host: PUBLIC_HOST, key: PASSWORD };
+  return JSON.parse((await request(server.port, '/api/pairing', options)).body);
+};
+
+test('a hosted server will not start without a real password', async () => {
+  const publicUrl = `https://${PUBLIC_HOST}`;
+  await assert.rejects(startServer({ port: 0, dataDir: await tempDir(), publicUrl }));
+  const hostPassword = 'short';
+  await assert.rejects(startServer({ port: 0, dataDir: await tempDir(), publicUrl, hostPassword }));
+});
+
+test('hosted, only the public name is served', async (t) => {
+  const server = await bootHosted(t);
+  assert.equal((await request(server.port, '/')).status, 403);
+  assert.equal((await request(server.port, '/', { host: PUBLIC_HOST })).status, 200);
+  const url = socketUrl(server);
+  assert.equal(await upgradeStatus(url, { Host: PUBLIC_HOST }), 101);
+  assert.equal(await upgradeStatus(url, { Host: 'evil.example' }), 403);
+  const evil = { Host: PUBLIC_HOST, Origin: 'https://evil.example' };
+  assert.equal(await upgradeStatus(url, evil), 403);
+  const own = { Host: PUBLIC_HOST, Origin: `https://${PUBLIC_HOST}` };
+  assert.equal(await upgradeStatus(url, own), 101);
+});
+
+test('hosted, being on the same computer proves nothing', async (t) => {
+  const server = await bootHosted(t);
+  const visitor = await joinHosted(server);
+  assert.equal(visitor.welcome.canControl, false);
+  assert.equal(visitor.welcome.isHosted, true);
+  assertRefused(await visitor.ask(CONTROL_COMMANDS[0]), 'forbidden');
+  assertRefused(await visitor.ask({ type: 'pairing:new' }), 'forbidden');
+  const options = { host: PUBLIC_HOST };
+  assert.equal((await request(server.port, '/api/pairing', options)).status, 403);
+  const wrong = { ...options, key: 'not-the-password' };
+  assert.equal((await request(server.port, '/api/pairing', wrong)).status, 403);
+});
+
+test('hosted, a visitor watches the live game without control', async (t) => {
+  const server = await bootHosted(t);
+  const host = await joinHosted(server, { key: PASSWORD });
+  const viewer = await joinHosted(server, { role: 'output' });
+  assert.equal(viewer.welcome.canControl, false);
+  await play(host, 0, add('Ann'));
+  const update = await viewer.take((m) => m.type === 'game' && m.game.players.length === 1);
+  assert.equal(update.game.players[0].name, 'Ann');
+  assert.equal(host.session.output.connected, false, 'a watcher does not count as the wall');
+});
+
+test('hosted, the host password gives control and the pairing details', async (t) => {
+  const server = await bootHosted(t);
+  const host = await joinHosted(server, { key: PASSWORD });
+  assert.equal(host.welcome.canControl, true);
+  await askOk(host, { type: 'session:set', view: 'game' });
+  const { url, code, addresses, isHosted } = await hostedPairing(server);
+  assert.equal(url, `https://${PUBLIC_HOST}/dealer#${code}`);
+  assert.equal(code.length, 12);
+  assert.deepEqual(addresses, [PUBLIC_HOST]);
+  assert.equal(isHosted, true);
+});
+
+test('hosted, a phone pairs with the code, and New code cuts it off', async (t) => {
+  const server = await bootHosted(t);
+  const host = await joinHosted(server, { key: PASSWORD });
+  const { code } = await hostedPairing(server);
+  const dealer = await joinHosted(server, { role: 'dealer', key: code });
+  assert.equal(dealer.welcome.canControl, true);
+  assertRefused(await dealer.ask({ type: 'pairing:new' }), 'forbidden');
+
+  await askOk(host, { type: 'pairing:new' });
+  await dealer.closed();
+  assert.equal(host.socket.readyState, WebSocket.OPEN);
+  const stale = await joinHosted(server, { role: 'dealer', key: code });
+  assert.equal(stale.welcome.canControl, false);
+  const { code: fresh } = await hostedPairing(server);
+  assert.equal(fresh.length, 12);
+  const back = await joinHosted(server, { role: 'dealer', key: fresh });
+  assert.equal(back.welcome.canControl, true);
+});
+
+test('hosted, a stranger guessing can not lock the dealer out', async (t) => {
+  const server = await bootHosted(t);
+  for (let i = 0; i < 8; i += 1) {
+    const guess = await joinHosted(server, { role: 'dealer', key: 'ABCDEFGHJKMN' });
+    assert.equal(guess.welcome.blocked, false);
+    guess.socket.close();
+  }
+  const { code } = await hostedPairing(server);
+  assert.equal((await joinHosted(server, { role: 'dealer', key: code })).welcome.canControl, true);
+});
+
+test('hosted, a short code from a laptop save is replaced, and the long one survives', async (t) => {
+  const dataDir = await tempDir();
+  const local = await boot(t, { dataDir });
+  const { code: short } = await pairingOf(local);
+  await local.close();
+  const server = await bootHosted(t, { dataDir });
+  const { code } = await hostedPairing(server);
+  assert.notEqual(code, short);
+  assert.equal(code.length, 12);
+  await server.close();
+  assert.equal((await hostedPairing(await bootHosted(t, { dataDir }))).code, code);
 });
 
 test('a LAN socket with a bad key stays connected and read only', onLan, async (t) => {

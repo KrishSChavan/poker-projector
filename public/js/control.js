@@ -12,6 +12,7 @@ import {
 import { connect } from './connection.js';
 import { normalizeTable } from './geometry.js';
 import { createHandles } from './handles.js';
+import { storedHostKey, storeHostKey } from './host-key.js';
 import { themeById, themes } from './themes.js';
 import { createWall } from './wall.js';
 
@@ -34,6 +35,7 @@ const state = {
   status: 'connecting',
   connectionId: null,
   canControl: null,
+  isHosted: false,
   // What this page shows, which leads the server during an edit, and what the server last said.
   calibration: null,
   confirmed: null,
@@ -305,9 +307,10 @@ function renderStatusChip(node, text, isOn) {
 }
 
 function renderStatus() {
-  const { canControl, session } = state;
+  const { canControl, isHosted, session } = state;
   const linkStatus = $('#link-status');
   const isViewOnly = isOnline() && canControl === false;
+  $('#host-login').hidden = !isHosted || !isViewOnly;
   linkStatus.hidden = isOnline() && !isViewOnly;
   if (isViewOnly) linkStatus.textContent = 'View only';
   else linkStatus.textContent = hasConnected ? 'Reconnecting' : 'Connecting';
@@ -373,7 +376,15 @@ function render() {
 
 /* ---------- Pairing ---------- */
 
-function renderPairing({ url, code, qrSvg, addresses }) {
+function pairingNote({ isHosted }, addresses) {
+  if (isHosted) return "Scan with the phone's camera.";
+  return addresses[0] === 'localhost'
+    ? 'This laptop is not on a network yet, so a phone cannot reach it.'
+    : "Scan with the phone's camera. It has to be on the same Wi-Fi as this laptop.";
+}
+
+function renderPairing(details) {
+  const { url, code, qrSvg, addresses } = details;
   const { origin, pathname } = new URL(url);
   const qr = $('#pairing-qr');
   qr.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}`;
@@ -381,10 +392,7 @@ function renderPairing({ url, code, qrSvg, addresses }) {
   $('#pairing-address').textContent = `${origin}${pathname}`;
   $('#pairing-code').textContent = code;
   $('#new-code').hidden = false;
-  $('#pairing-note').textContent =
-    addresses[0] === 'localhost'
-      ? 'This laptop is not on a network yet, so a phone cannot reach it.'
-      : "Scan with the phone's camera. It has to be on the same Wi-Fi as this laptop.";
+  $('#pairing-note').textContent = pairingNote(details, addresses);
 }
 
 function localAddress() {
@@ -393,21 +401,26 @@ function localAddress() {
   return url.origin;
 }
 
+function pairingFailureNote(status) {
+  if (status !== 403) return 'Could not load the pairing details.';
+  if (state.isHosted) return 'Sign in as the host to see the code.';
+  return `On the computer running the server, open ${localAddress()}.`;
+}
+
 function renderPairingFailure(status) {
   shownPairing = null;
   $('#pairing-qr').hidden = true;
   $('#pairing-address').textContent = '';
   $('#pairing-code').textContent = '';
   $('#new-code').hidden = true;
-  $('#pairing-note').textContent =
-    status === 403
-      ? `On the computer running the server, open ${localAddress()}.`
-      : 'Could not load the pairing details.';
+  $('#pairing-note').textContent = pairingFailureNote(status);
 }
 
 async function loadPairing() {
   try {
-    const response = await fetch('/api/pairing');
+    const key = storedHostKey();
+    const headers = key === null ? {} : { Authorization: `Bearer ${key}` };
+    const response = await fetch('/api/pairing', { headers });
     if (!response.ok) {
       renderPairingFailure(response.status);
       return;
@@ -476,8 +489,14 @@ function onGame({ game }) {
   render();
 }
 
-function onWelcome({ connectionId, canControl }) {
-  Object.assign(state, { connectionId, canControl });
+function onWelcome({ connectionId, canControl, isHosted }) {
+  Object.assign(state, { connectionId, canControl, isHosted });
+  // A refused password is dropped, so it can't go out again on every reconnect.
+  if (isHosted && !canControl && storedHostKey() !== null) {
+    storeHostKey(null);
+    link.clearKey();
+    toast('That password did not work.');
+  }
   loadPairing();
   render();
 }
@@ -612,6 +631,14 @@ function bindControls() {
   });
   $('#open-wall').addEventListener('click', openWall);
   $('#new-code').addEventListener('click', replaceCode);
+  $('#host-login').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const field = $('#host-password');
+    if (field.value === '') return;
+    storeHostKey(field.value);
+    link.setKey(field.value);
+    field.value = '';
+  });
 
   $('.topbar').addEventListener('click', dropMouseFocus);
   $('.calibration').addEventListener('click', dropMouseFocus);
@@ -644,6 +671,7 @@ function start() {
 
   link = connect({
     role: 'control',
+    key: storedHostKey(),
     onMessage: (message) => handlers[message.type]?.(message),
     onStatus,
   });

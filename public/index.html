@@ -15,6 +15,11 @@
         <button type="button" role="tab" data-view-target="game" disabled>Game</button>
       </div>
       <div class="topbar-end">
+        <form id="host-login" class="host-login" hidden>
+          <label class="sr-only" for="host-password">Host password</label>
+          <input id="host-password" type="password" placeholder="Host password" autocomplete="current-password" />
+          <button type="submit" class="button">Sign in</button>
+        </form>
         <span id="link-status" class="status warn" role="status">Connecting</span>
         <span
           id="wall-status"

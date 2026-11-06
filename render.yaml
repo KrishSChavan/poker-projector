@@ -1,0 +1,13 @@
+# Free plan: it sleeps when idle and forgets saved files on every restart. See the README.
+services:
+  - type: web
+    runtime: node
+    name: poker-projector
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 25.8.1
+      - key: HOST_PASSWORD
+        generateValue: true

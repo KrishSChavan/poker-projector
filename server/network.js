@@ -58,7 +58,9 @@ function parseHost(header) {
 
 // A page on a rebound domain reaches this server with the attacker's name in Host. The Origin
 // check can't catch that, because Origin and Host agree, so upgrades need this check too.
-export function isAllowedHost(header, port, names = localNames()) {
+// Hosted, there is one public name, and the proxy in front decides the port people see.
+export function isAllowedHost(header, port, names = localNames(), publicHost = null) {
+  if (publicHost !== null) return header?.toLowerCase() === publicHost;
   const host = parseHost(header);
   return host !== null && host.port === port && names.has(host.hostname);
 }
@@ -72,8 +74,9 @@ export function isSameOrigin(origin, hostHeader) {
 }
 
 // The HTTP status to refuse a WebSocket upgrade with, or null to accept it.
-export function upgradeRefusal({ url, headers }, port) {
+export function upgradeRefusal({ url, headers }, port, publicHost = null) {
   if (url.split('?')[0] !== '/ws') return 404;
-  const allowed = isAllowedHost(headers.host, port) && isSameOrigin(headers.origin, headers.host);
+  const isAllowed = isAllowedHost(headers.host, port, undefined, publicHost);
+  const allowed = isAllowed && isSameOrigin(headers.origin, headers.host);
   return allowed ? null : 403;
 }

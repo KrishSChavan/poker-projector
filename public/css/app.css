@@ -246,6 +246,24 @@ button:disabled {
   min-width: 0;
 }
 
+.host-login {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.host-login input {
+  width: 160px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
 .status {
   display: inline-flex;
   align-items: center;

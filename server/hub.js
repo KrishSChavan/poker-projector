@@ -6,7 +6,6 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { GameError } from '../game/engine.js';
 import { DEFAULT_TABLE, sanitizeCalibration } from '../public/js/calibration.js';
 import { controlPoints, defaultCorners } from '../public/js/geometry.js';
-import { isLoopback } from './network.js';
 
 export const MAX_MESSAGE_BYTES = 64 * 1024;
 
@@ -129,11 +128,13 @@ export function createHub({ session, calibration, stores, gate }) {
     // Read before the key is checked: the wrong guess that starts a block was still looked at.
     const blocked = gate.isBlocked(client.address);
     const retryInMs = gate.blockLeftMs(client.address);
+    client.isHost = gate.isHost(client.address, key);
     client.canControl = gate.mayControl(client.address, key);
     sendTo(client, {
       type: 'welcome',
       connectionId: client.id,
       canControl: client.canControl,
+      isHosted: gate.isHosted,
       blocked,
       retryInMs,
     });
@@ -231,16 +232,14 @@ export function createHub({ session, calibration, stores, gate }) {
     broadcast(sessionMessage());
   }
 
-  // Only this computer ever sees the code, so only it can replace it: a phone that shouldn't have
+  // Only the host ever sees the code, so only the host can replace it: a phone that shouldn't have
   // been paired must not be able to lock everyone else out. Control is decided at hello, which is
   // why a paired device has to be cut off here. It comes back as a stranger with an old code.
   async function replacePairingCode(client) {
-    if (!isLoopback(client.address)) {
-      throw refuse('forbidden', 'Only the laptop can change the code.');
-    }
+    if (!client.isHost) throw refuse('forbidden', 'Only the host can change the code.');
     stores.pairing.save({ code: gate.newCode() });
     for (const other of clients.values()) {
-      if (other.canControl && !isLoopback(other.address)) other.socket.terminate();
+      if (other.canControl && !other.isHost) other.socket.terminate();
     }
     await stores.pairing.flush();
   }
@@ -287,6 +286,7 @@ export function createHub({ session, calibration, stores, gate }) {
       socket,
       address: request.socket.remoteAddress,
       role: null,
+      isHost: false,
       canControl: false,
       alive: true,
       wallSize: null,

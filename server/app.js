@@ -10,7 +10,7 @@ import { createDefaultCalibration, sanitizeCalibration } from '../public/js/cali
 import { createCalibrationEditor } from './calibrationEditor.js';
 import { createHub } from './hub.js';
 import { phoneAddresses, phoneUrl, upgradeRefusal } from './network.js';
-import { createGate, loadPairingCode } from './pairing.js';
+import { MIN_HOST_PASSWORD_LENGTH, createGate, loadPairingCode } from './pairing.js';
 import { createStore } from './store.js';
 import { createWebApp } from './web.js';
 
@@ -72,7 +72,15 @@ export async function startServer({
   host = '0.0.0.0',
   publicDir = PUBLIC_DIR,
   now,
+  publicUrl = null,
+  hostPassword = null,
 }) {
+  const isHosted = publicUrl !== null;
+  if (isHosted && (hostPassword?.length ?? 0) < MIN_HOST_PASSWORD_LENGTH) {
+    throw new Error(`HOST_PASSWORD must be at least ${MIN_HOST_PASSWORD_LENGTH} characters.`);
+  }
+  const publicOrigin = isHosted ? new URL(publicUrl).origin : null;
+  const publicHost = isHosted ? new URL(publicUrl).host : null;
   await requireFreeLoopback(port);
 
   const fileIn = (name) => path.join(dataDir, name);
@@ -81,7 +89,8 @@ export async function startServer({
     game: createStore(fileIn('game.json')),
     pairing: createStore(fileIn('pairing.json'), { indent: 2 }),
   };
-  const gate = createGate(await loadPairingCode(stores.pairing), now);
+  const code = await loadPairingCode(stores.pairing, isHosted);
+  const gate = createGate(code, now, isHosted ? hostPassword : null);
   const calibration = createCalibrationEditor(await loadCalibration(stores.calibration));
   const session = await loadSession(stores.game);
 
@@ -89,12 +98,13 @@ export async function startServer({
   await listen(httpServer, port, host);
   const boundPort = httpServer.address().port;
 
-  httpServer.on('request', createWebApp({ publicDir, port: boundPort, gate }));
+  const app = createWebApp({ publicDir, port: boundPort, gate, publicUrl: publicOrigin });
+  httpServer.on('request', app);
   const hub = createHub({ session, calibration, stores, gate });
   httpServer.on('upgrade', (request, socket, head) => {
     // Node stops watching a socket once it is handed over, so an error here would be fatal.
     socket.on('error', () => socket.destroy());
-    const status = upgradeRefusal(request, boundPort);
+    const status = upgradeRefusal(request, boundPort, publicHost);
     if (status === null) hub.upgrade(request, socket, head);
     else refuseUpgrade(socket, status);
   });
@@ -111,6 +121,7 @@ export async function startServer({
   let closing = null;
   return {
     port: boundPort,
+    publicUrl: publicOrigin,
     phoneUrl: () => phoneUrl(phoneAddresses()[0], boundPort, gate.code),
     close() {
       closing ??= shutDown();

@@ -76,10 +76,29 @@ Set a longer Auto-Lock on the dealer's phone, because the app can't keep it awak
 
 **On a Mac:** in System Settings, under Menu Bar, set "Automatically hide and show the menu bar" to In Full Screen Only before you calibrate. Otherwise the menu bar covers the top of the wall.
 
+## Put it online for free
+
+You can run the app on [Render](https://render.com)'s free plan instead of your laptop, so it has a web address that people can open from anywhere.
+
+1. Sign in to Render with GitHub. Choose **New**, then **Blueprint**, and pick this repo. The `render.yaml` file sets everything up.
+2. When it's live, open the service's **Environment** page and copy `HOST_PASSWORD`.
+3. Open your `onrender.com` address and sign in with that password at the top of the page. Open wall window and the QR code then work as usual, and the phone no longer needs to be on the same Wi-Fi.
+4. Share `https://<your-app>.onrender.com/output` with anyone who wants to watch.
+
+The free plan has real limits:
+
+- It sleeps after 15 minutes with no traffic, and the first visit after that takes about a minute.
+- Every restart, sleep or redeploy erases saved files. You lose the calibration, any game in progress, and the phone's pairing, so calibrate and pair again at the start of a game night.
+- Your laptop still drives the projector, and the game now depends on your internet connection.
+
+On a paid Render plan, add a persistent disk and point `DATA_DIR` at it to keep everything saved.
+
+Vercel isn't supported. The app needs one server that stays running and holds the game, which Vercel's functions don't provide.
+
 ## Good to know
 
 - Rebuys, seat changes and blind changes happen between hands, not during one. If a player has to leave mid-hand, fold them, then remove them.
-- Anyone on the same Wi-Fi can watch the game, so use a network you trust.
+- Anyone on the same Wi-Fi can watch the game, and online anyone with the link can watch. Only the host and the paired phone can change anything.
 - It has been tested on an iOS simulator with real touches and on a 1080p monitor. It hasn't yet been tried on a physical iPhone or a real projector.
 
 ## For developers
@@ -92,5 +111,7 @@ npm test
 | --- | --- | --- |
 | `PORT` | `3000` | The port the app runs on |
 | `DATA_DIR` | `data` | Where calibration, the game and the pairing code are saved |
+| `PUBLIC_URL` | none | The site's public address, which turns on hosted mode. Render fills this in by itself. |
+| `HOST_PASSWORD` | none | The host's sign-in, required in hosted mode, at least 12 characters |
 
 The `game/` folder holds the betting rules, `server/` runs the app and keeps every screen in sync, and `public/` has the laptop, wall and phone pages.
