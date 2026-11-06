@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Poker Projection</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body data-view="projection">
+    <header class="topbar">
+      <span class="brand">Poker Projection</span>
+      <div class="tabs" role="tablist" aria-label="View">
+        <button type="button" role="tab" data-view-target="projection" disabled>Projection</button>
+        <button type="button" role="tab" data-view-target="game" disabled>Game</button>
+      </div>
+      <div class="topbar-end">
+        <span id="link-status" class="status warn" role="status">Connecting</span>
+        <span
+          id="wall-status"
+          class="status"
+          role="status"
+          title="Points are stored relative to the wall window, so calibrate with it in fullscreen."
+          hidden
+        ></span>
+        <span id="phone-status" class="status" role="status" hidden></span>
+        <button type="button" id="open-wall" class="button" disabled>Open wall window</button>
+      </div>
+    </header>
+
+    <p id="save-warning" role="alert" hidden>Not saving. A crash would lose recent changes.</p>
+
+    <main class="workspace">
+      <!-- Before the preview so that Shift+Tab out of the points lands in the panel. -->
+      <aside class="panel calibration" aria-label="Calibration">
+        <fieldset id="controls" disabled>
+          <section class="inline-section">
+            <h2>Test pattern</h2>
+            <div class="segmented">
+              <button type="button" data-pattern="table">Table</button>
+              <button type="button" data-pattern="outline">Outline</button>
+              <button type="button" data-pattern="grid">Grid</button>
+            </div>
+          </section>
+
+          <section>
+            <div class="section-head">
+              <h2>Points</h2>
+              <button type="button" id="show-points" class="switch-row" role="switch" aria-checked="true">
+                Show points on wall
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+            </div>
+            <ul class="legend">
+              <li><span class="mark keystone"></span>Keystone: moves the whole perspective</li>
+              <li><span class="mark fine"></span>Fine: bends the rim locally</li>
+              <li><span class="mark move"></span>Center: slides the whole table</li>
+            </ul>
+            <p id="point-readout">No point selected</p>
+            <div class="button-row">
+              <button type="button" id="undo" class="button" disabled>Undo</button>
+              <button type="button" id="redo" class="button" disabled>Redo</button>
+            </div>
+            <div class="button-row">
+              <button type="button" id="reset-fine" class="button">Reset fine</button>
+              <button type="button" id="reset-all" class="button">Reset all</button>
+            </div>
+          </section>
+
+          <section>
+            <h2>Table size</h2>
+            <div id="table-size" class="fields">
+              <label>Length <span>in</span><input id="table-length" type="number" min="48" max="144" step="1" /></label>
+              <label>Width <span>in</span><input id="table-width" type="number" min="24" max="72" step="1" /></label>
+              <label>Rail <span>in</span><input id="table-rail" type="number" min="0" max="8" step="0.5" /></label>
+            </div>
+          </section>
+
+          <section>
+            <h2>Theme</h2>
+            <div id="themes"></div>
+            <p id="theme-note"></p>
+          </section>
+
+          <section>
+            <h2>Keys</h2>
+            <dl class="keys">
+              <div><dt>H</dt><dd>Show or hide points on the wall</dd></div>
+              <div><dt>P</dt><dd>Next test pattern</dd></div>
+              <div><dt>Arrows</dt><dd>Nudge 1 wall pixel, Shift for 10</dd></div>
+              <div><dt>Shift drag</dt><dd>Slow, precise drag</dd></div>
+              <div><dt>Tab</dt><dd>Next point</dd></div>
+              <div><dt>Esc</dt><dd>Clear selection</dd></div>
+              <div><dt>⌘Z</dt><dd>Undo, ⇧⌘Z to redo</dd></div>
+            </dl>
+          </section>
+        </fieldset>
+      </aside>
+
+      <aside class="panel pairing" aria-label="Pair the phone">
+        <section>
+          <h2>Dealer phone</h2>
+          <div class="qr"><img id="pairing-qr" alt="QR code that opens the dealer controls" hidden /></div>
+          <p id="pairing-note" class="pairing-note" role="status"></p>
+          <dl class="pairing-details">
+            <div><dt>Address</dt><dd id="pairing-address"></dd></div>
+            <div><dt>Code</dt><dd id="pairing-code"></dd></div>
+            <div><dt>Status</dt><dd id="pairing-phone"></dd></div>
+          </dl>
+          <button type="button" id="new-code" class="button" hidden>New code</button>
+          <a class="plain-link" href="/dealer" target="_blank" rel="noopener">Open dealer controls here</a>
+        </section>
+      </aside>
+
+      <div class="preview-area">
+        <div id="preview" class="preview">
+          <canvas id="table" aria-label="Live preview of the wall"></canvas>
+          <div id="stage">
+            <svg id="quad" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+              <polygon></polygon>
+            </svg>
+            <div id="handles"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="toast" role="status" hidden></div>
+    <p id="fatal" role="alert" hidden></p>
+
+    <script type="module" src="/js/control.js"></script>
+  </body>
+</html>

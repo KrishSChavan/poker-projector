@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0E1512" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>Dealer controls</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/css/dealer.css" />
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="icon-up" viewBox="0 0 24 24"><path d="M12 6.5 21 18H3z" /></symbol>
+      <symbol id="icon-down" viewBox="0 0 24 24"><path d="M12 17.5 3 6h18z" /></symbol>
+      <symbol id="icon-left" viewBox="0 0 24 24"><path d="M6.5 12 18 3v18z" /></symbol>
+      <symbol id="icon-right" viewBox="0 0 24 24"><path d="M17.5 12 6 21V3z" /></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-undo" viewBox="0 0 24 24">
+        <path d="M9 7 4.5 11.5 9 16M5 11.5h9.5a5 5 0 0 1 0 10H11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-redo" viewBox="0 0 24 24">
+        <path d="M15 7l4.5 4.5L15 16M19 11.5H9.5a5 5 0 0 0 0 10H13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-minus" viewBox="0 0 24 24">
+        <path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M5 12h14M12 5v14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+    </svg>
+
+    <!-- A form control on purpose: dealer.js says why. -->
+    <fieldset id="app" class="app">
+      <header id="topbar" class="topbar" hidden>
+        <div id="tabs" class="tabs" role="tablist" aria-label="View">
+          <button type="button" role="tab" data-view="game" data-online>Game</button>
+          <button type="button" role="tab" data-view="projection" data-online>Projection</button>
+        </div>
+        <span id="wall-state" class="wall-state" role="status"></span>
+      </header>
+
+      <p id="banner" class="banner" role="alert" hidden></p>
+      <p id="save-warning" class="banner" role="alert" hidden>Not saving. A crash would lose recent changes.</p>
+
+      <div id="splash" class="splash"><p>Connecting to the table...</p></div>
+
+      <section id="pairing" class="pairing" hidden>
+        <form id="code-form" class="pairing-card">
+          <h1>Pair this phone</h1>
+          <p>Type the code shown on the laptop, under the Game tab.</p>
+          <label class="sr-only" for="code-field">Pairing code</label>
+          <input
+            id="code-field"
+            class="code-field"
+            type="text"
+            maxlength="6"
+            placeholder="······"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            enterkeyhint="go"
+            data-online
+          />
+          <p id="code-message" class="code-message" role="status"></p>
+          <button type="submit" class="btn lg primary" data-online>
+            <span class="btn-label">Pair</span>
+          </button>
+        </form>
+      </section>
+
+      <div id="game-tab" class="tab game-tab" hidden>
+        <main id="lobby" class="lobby" hidden>
+          <form id="add-form" class="add-form">
+            <label class="sr-only" for="add-name">Player name</label>
+            <input
+              id="add-name"
+              class="field"
+              type="text"
+              maxlength="16"
+              placeholder="Player name"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="words"
+              spellcheck="false"
+              enterkeyhint="done"
+              data-online
+            />
+            <button id="add-button" type="submit" class="btn add" data-lock>
+              <span class="btn-label">Add</span>
+            </button>
+          </form>
+
+          <div class="section-head">
+            <h2>Players <span id="seat-count" class="count"></span></h2>
+            <span class="limit">2 to 9 players</span>
+          </div>
+          <p class="hint">Add players clockwise. Tap a name to choose who deals first.</p>
+          <ol id="seats" class="seats"></ol>
+
+          <div class="section-head"><h2>Chips</h2></div>
+          <div class="options">
+            <label>
+              <span>Starting chips</span>
+              <input id="starting-chips" class="field" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" data-online />
+            </label>
+            <label>
+              <span>Small blind</span>
+              <input id="small-blind" class="field" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" data-online />
+            </label>
+            <label>
+              <span>Big blind</span>
+              <input id="big-blind" class="field" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" data-online />
+            </label>
+          </div>
+        </main>
+
+        <main id="manage" class="lobby" hidden>
+          <form id="seat-form" class="add-form">
+            <label class="sr-only" for="seat-name">New player name</label>
+            <input
+              id="seat-name"
+              class="field"
+              type="text"
+              maxlength="16"
+              placeholder="New player"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="words"
+              spellcheck="false"
+              enterkeyhint="done"
+              data-online
+            />
+            <button id="seat-button" type="submit" class="btn add" data-lock>
+              <span class="btn-label">Seat</span>
+            </button>
+          </form>
+
+          <div class="section-head">
+            <h2>Players <span id="manage-count" class="count"></span></h2>
+            <span class="limit">Changes start next hand</span>
+          </div>
+          <p id="manage-hint" class="hint"></p>
+          <ol id="manage-seats" class="seats"></ol>
+
+          <div class="section-head"><h2>Blinds</h2></div>
+          <form id="blinds-form" class="blinds">
+            <label>
+              <span>Small blind</span>
+              <input id="next-small" class="field" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" data-online />
+            </label>
+            <label>
+              <span>Big blind</span>
+              <input id="next-big" class="field" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" data-online />
+            </label>
+            <button id="blinds-double" type="button" class="btn add" data-lock>
+              <span class="btn-label">Double</span>
+            </button>
+            <button id="blinds-set" type="submit" class="btn add wide" data-lock>
+              <span class="btn-label">Set blinds</span>
+            </button>
+          </form>
+        </main>
+
+        <main id="table" class="table" hidden>
+          <div id="strip" class="strip"></div>
+          <div id="pots-line"></div>
+          <div id="hero" class="hero-slot" aria-live="polite"></div>
+          <div id="body" class="body"></div>
+        </main>
+
+        <footer class="dock">
+          <p id="notice" class="notice" role="alert" hidden></p>
+          <div id="utility" class="utility"></div>
+          <div id="primary" class="primary"></div>
+        </footer>
+      </div>
+
+      <main id="projection-tab" class="tab projection-tab" hidden>
+        <div id="map" class="map" role="group" aria-label="Map of the wall">
+          <svg class="map-art" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+            <path id="map-rim" vector-effect="non-scaling-stroke" />
+            <path id="map-felt" />
+            <path id="map-seam" fill="none" vector-effect="non-scaling-stroke" />
+          </svg>
+          <div id="map-points"></div>
+          <p id="map-notice" class="notice" role="alert" hidden></p>
+        </div>
+        <p id="point-readout" class="readout" role="status"></p>
+        <p id="wall-note" class="wall-note" hidden>The wall is not open. Changes still save.</p>
+
+        <div class="proj-settings">
+          <div class="segmented" role="group" aria-label="Test pattern">
+            <button type="button" data-pattern="table" data-online>Table</button>
+            <button type="button" data-pattern="outline" data-online>Outline</button>
+            <button type="button" data-pattern="grid" data-online>Grid</button>
+          </div>
+          <button id="show-points" type="button" class="switch-row" role="switch" aria-checked="true" data-online>
+            <span>Show points on wall</span>
+            <span class="switch" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="proj-controls">
+          <div class="proj-side">
+            <div class="segmented" role="group" aria-label="Nudge size in wall pixels">
+              <button type="button" data-step="1">1 px</button>
+              <button type="button" data-step="10">10 px</button>
+            </div>
+            <div class="proj-history">
+              <button id="calibration-undo" type="button" class="btn small" data-online>
+                <svg class="icon" aria-hidden="true"><use href="#icon-undo" /></svg>
+                <span>Undo</span>
+              </button>
+              <button id="calibration-redo" type="button" class="btn small" data-online>
+                <svg class="icon" aria-hidden="true"><use href="#icon-redo" /></svg>
+                <span>Redo</span>
+              </button>
+            </div>
+          </div>
+          <div class="dpad" role="group" aria-label="Nudge the selected point">
+            <button type="button" class="pad pad-up" data-nudge="0,-1" aria-label="Nudge up" data-online>
+              <svg class="icon" aria-hidden="true"><use href="#icon-up" /></svg>
+            </button>
+            <button type="button" class="pad pad-left" data-nudge="-1,0" aria-label="Nudge left" data-online>
+              <svg class="icon" aria-hidden="true"><use href="#icon-left" /></svg>
+            </button>
+            <button type="button" class="pad pad-right" data-nudge="1,0" aria-label="Nudge right" data-online>
+              <svg class="icon" aria-hidden="true"><use href="#icon-right" /></svg>
+            </button>
+            <button type="button" class="pad pad-down" data-nudge="0,1" aria-label="Nudge down" data-online>
+              <svg class="icon" aria-hidden="true"><use href="#icon-down" /></svg>
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <div id="scrim" class="scrim" hidden></div>
+      <form id="sheet" class="sheet" aria-labelledby="sheet-title" novalidate hidden>
+        <header class="sheet-head">
+          <div class="sheet-who">
+            <h2 id="sheet-title"></h2>
+            <p id="sheet-info"></p>
+          </div>
+          <button id="sheet-close" type="button" class="icon-btn" aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#icon-close" /></svg>
+          </button>
+        </header>
+        <div id="sheet-modes" class="segmented" role="group" aria-label="What to change" hidden>
+          <button type="button" data-mode="add" data-lock>Add chips</button>
+          <button type="button" data-mode="set" data-lock>Set stack</button>
+        </div>
+        <div class="amount">
+          <button id="amount-down" type="button" class="step" aria-label="Less" data-lock>
+            <svg class="icon" aria-hidden="true"><use href="#icon-minus" /></svg>
+          </button>
+          <label class="amount-field">
+            <span id="amount-label"></span>
+            <input id="amount" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="go" />
+          </label>
+          <button id="amount-up" type="button" class="step" aria-label="More" data-lock>
+            <svg class="icon" aria-hidden="true"><use href="#icon-plus" /></svg>
+          </button>
+        </div>
+        <div id="presets" class="presets"></div>
+        <p id="amount-note" class="amount-note"></p>
+        <p id="sheet-error" class="sheet-error" role="alert" hidden></p>
+        <button id="sheet-confirm" type="submit" class="btn lg primary" data-lock>
+          <span class="btn-label" data-fit></span>
+        </button>
+      </form>
+    </fieldset>
+
+    <script type="module" src="/js/dealer.js"></script>
+  </body>
+</html>

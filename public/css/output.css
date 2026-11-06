@@ -1,0 +1,158 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  /* Always true black: anything lighter throws light past the table. */
+  background: #000;
+}
+
+body {
+  color: #e8efea;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+}
+
+body.fullscreen,
+body.fullscreen * {
+  cursor: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+#wall,
+#markers {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#wall {
+  display: block;
+}
+
+#markers {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The same shapes as the laptop's handles, larger because they're read on a wall. */
+.marker {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.marker::before,
+.marker::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.marker.keystone::before {
+  width: 44px;
+  height: 44px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.7);
+}
+
+.marker.keystone::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.marker.fine::before {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ffd60a;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.7);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.marker.move::before {
+  width: 36px;
+  height: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.marker.move::after {
+  width: 3px;
+  height: 36px;
+  background: #fff;
+}
+
+.marker.keystone.selected::before,
+.marker.fine.selected::before {
+  border-color: #ffd60a;
+  box-shadow:
+    0 0 0 3px #000,
+    0 0 0 7px #ffd60a;
+}
+
+.marker.keystone.selected::before {
+  background: rgba(255, 214, 10, 0.4);
+}
+
+.marker.keystone.selected::after {
+  background: #ffd60a;
+}
+
+.marker.fine.selected::before {
+  background: #ffd60a;
+}
+
+.marker.move.selected::before {
+  width: 64px;
+  height: 7px;
+}
+
+.marker.move.selected::after {
+  width: 7px;
+  height: 64px;
+}
+
+.marker.move.selected::before,
+.marker.move.selected::after {
+  background: #ffd60a;
+  box-shadow: 0 0 0 3px #000;
+}
+
+#hint,
+#fatal {
+  position: fixed;
+  right: 0;
+  bottom: 12px;
+  left: 0;
+  margin: 0;
+  padding-inline: 16px;
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+#hint {
+  color: #93a79c;
+}
+
+#fatal {
+  top: 50%;
+  bottom: auto;
+  font-size: 18px;
+}

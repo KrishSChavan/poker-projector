@@ -1,0 +1,808 @@
+:root {
+  --bg: #0e1512;
+  --surface: #141e1a;
+  --raised: #1c2a24;
+  --border: #2b3d34;
+  --text: #e8efea;
+  --muted: #93a79c;
+  --accent: #d4af37;
+  --onAccent: #1a1405;
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.workspace {
+  grid-row: 3;
+  display: grid;
+  grid-template-areas: 'preview panel';
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 300px;
+  min-height: 0;
+}
+
+/* ---------- Preview ---------- */
+
+/* The padding keeps a point sitting right on the edge of the wall fully grabbable. */
+.preview-area {
+  grid-area: preview;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 28px;
+  overflow: hidden;
+  container-type: size;
+}
+
+/* Always true black, so it reads as the wall. */
+.preview {
+  --wall-aspect: 1.7778;
+  position: relative;
+  width: min(100cqw, 100cqh * var(--wall-aspect));
+  aspect-ratio: var(--wall-aspect);
+  background: #000;
+  outline: 1px solid var(--border);
+}
+
+#table,
+#stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#table {
+  display: block;
+}
+
+/* ---------- Points ---------- */
+
+#stage {
+  z-index: 1;
+  pointer-events: none;
+}
+
+#quad,
+#handles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#quad polygon {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1;
+  stroke-dasharray: 5 6;
+  stroke-opacity: 0.45;
+  vector-effect: non-scaling-stroke;
+}
+
+.handle {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.handle:focus-visible {
+  outline: none;
+}
+
+.handle:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.handle::before,
+.handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.handle.keystone::before {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+}
+
+.handle.keystone::after {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.handle.fine::before {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--accent);
+  background: rgba(0, 0, 0, 0.55);
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+}
+
+.handle.move::before {
+  width: 22px;
+  height: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.handle.move::after {
+  width: 2px;
+  height: 22px;
+  background: #fff;
+}
+
+.handle.keystone.selected::before,
+.handle.move.selected::before,
+.handle.move.selected::after {
+  border-color: var(--accent);
+}
+
+.handle.keystone.selected::before {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.handle.keystone.selected::after,
+.handle.move.selected::before,
+.handle.move.selected::after {
+  background: var(--accent);
+}
+
+.handle.fine.selected::before {
+  background: var(--accent);
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  height: 52px;
+  padding-inline: 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.topbar-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.status::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.status.on {
+  color: var(--text);
+}
+
+.status.on::before {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.status.warn {
+  color: #ff8a7a;
+  font-weight: 600;
+}
+
+.tabs,
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.tabs button,
+.segmented button {
+  flex: 1;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.tabs button:hover:not(:disabled),
+.segmented button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.tabs [aria-selected='true'],
+.segmented [aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--onAccent);
+}
+
+.tabs [aria-selected='true']:hover:not(:disabled),
+.segmented [aria-pressed='true']:hover:not(:disabled) {
+  color: var(--onAccent);
+}
+
+.button {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--raised);
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.button:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+/* ---------- Panel ---------- */
+
+.panel {
+  grid-area: panel;
+  --section-pad: 9px;
+  --heading-gap: 7px;
+  --row-gap: 3px;
+  --block-gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* Styling the scrollbar keeps it on screen on a Mac, where more below would otherwise be hidden. */
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: var(--border);
+}
+
+body[data-view='game'] #stage,
+body[data-view='game'] .calibration,
+body[data-view='projection'] .pairing {
+  display: none;
+}
+
+#controls {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#controls:disabled {
+  opacity: 0.55;
+}
+
+.panel section {
+  padding: var(--section-pad) 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel section:last-child {
+  border-bottom: 0;
+}
+
+.panel h2 {
+  margin: 0 0 var(--heading-gap);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.panel .segmented button {
+  padding: 3px 9px;
+}
+
+.inline-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inline-section h2 {
+  margin: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--heading-gap);
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+.switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 12px;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--border);
+  transition: background 120ms linear;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 120ms ease-out;
+}
+
+[aria-checked='true'] .switch {
+  background: var(--accent);
+}
+
+[aria-checked='true'] .switch::after {
+  background: var(--onAccent);
+  transform: translateX(14px);
+}
+
+.legend {
+  display: grid;
+  gap: var(--row-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mark {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.mark.keystone {
+  border: 2px solid var(--text);
+  border-radius: 50%;
+}
+
+.mark.fine {
+  width: 10px;
+  height: 10px;
+  margin-inline: 2px;
+  border: 2px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+.mark.move {
+  background:
+    linear-gradient(var(--text), var(--text)) center / 100% 2px no-repeat,
+    linear-gradient(var(--text), var(--text)) center / 2px 100% no-repeat;
+}
+
+#point-readout {
+  margin: var(--block-gap) 0;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fields label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 4px;
+}
+
+.fields span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fields input {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#themes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.theme {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  column-gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.theme:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.theme[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--raised);
+}
+
+.swatch {
+  height: 20px;
+  border: 3px solid var(--swatch-rail);
+  border-radius: 10px;
+  background: var(--swatch-felt);
+  box-shadow:
+    0 0 0 1px var(--swatch-accent),
+    inset 0 0 0 1px color-mix(in srgb, var(--swatch-accent) 50%, transparent);
+}
+
+.theme-name {
+  font-weight: 600;
+}
+
+#theme-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.keys {
+  display: grid;
+  gap: var(--row-gap);
+  margin: 0;
+  font-size: 12px;
+}
+
+.keys div {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  gap: 8px;
+}
+
+.keys dt {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.keys dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ---------- Pairing ---------- */
+
+.pairing section {
+  display: grid;
+  gap: 12px;
+}
+
+.pairing h2 {
+  margin: 0;
+}
+
+.qr {
+  justify-self: center;
+  width: 224px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.qr img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.qr:has(img[hidden]),
+.pairing-details div:has(dd:empty) {
+  display: none;
+}
+
+.pairing-note {
+  margin: 0;
+  color: var(--muted);
+}
+
+.pairing-details {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pairing-details div {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pairing-details dt {
+  color: var(--muted);
+}
+
+.pairing-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+#pairing-code {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+#pairing-phone {
+  color: var(--muted);
+  user-select: auto;
+}
+
+#pairing-phone.on {
+  color: var(--text);
+}
+
+.plain-link {
+  color: var(--accent);
+}
+
+/* ---------- Messages ---------- */
+
+#save-warning {
+  grid-row: 2;
+  margin: 0;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  color: #ff8a7a;
+  font-weight: 600;
+  text-align: center;
+}
+
+#toast {
+  position: fixed;
+  z-index: 4;
+  bottom: 18px;
+  left: calc((100% - 300px) / 2);
+  max-width: calc(100% - 332px);
+  margin: 0;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#fatal {
+  position: fixed;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  color: #ff8a7a;
+}
+
+/* ---------- Other window shapes ---------- */
+
+/* Everything fits a 720 tall window as it stands. A taller one gets the spare room back. */
+@media (min-height: 800px) {
+  .panel {
+    --section-pad: 14px;
+    --heading-gap: 10px;
+    --row-gap: 6px;
+    --block-gap: 10px;
+  }
+}
+
+/* The brand gives way before the status does. Past that the bar wraps onto two lines. */
+@media (max-width: 1040px) {
+  .topbar {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .brand {
+    display: none;
+  }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    height: auto;
+    min-height: 52px;
+    padding-block: 8px;
+  }
+
+  .topbar-end {
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+}
+
+/* Too narrow for two columns: the preview goes on top and the whole page scrolls. */
+@media (max-width: 720px) {
+  html,
+  body {
+    height: auto;
+    overflow: auto;
+  }
+
+  body {
+    display: block;
+  }
+
+  .workspace {
+    grid-template-areas: 'preview' 'panel';
+    grid-template-rows: auto auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview-area {
+    height: clamp(240px, 56vh, 520px);
+  }
+
+  .panel {
+    overflow: visible;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+
+  #toast {
+    left: 50%;
+    max-width: calc(100% - 32px);
+  }
+}
