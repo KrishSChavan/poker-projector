@@ -612,3 +612,53 @@ test('random games with table changes never lose track of a chip or a dealer', (
   assert.ok(changes > 1000, `only ${changes} changes ran`);
   assert.ok(rebuysAtGameOver > 10, `only ${rebuysAtGameOver} games came back`);
 });
+
+describe('starting stacks', () => {
+  const setBuyIn = (id, stack) => ({ type: 'setBuyIn', id, stack });
+  const options = (startingChips) => ({ type: 'setOptions', startingChips, smallBlind: 5, bigBlind: 10 });
+
+  test('one player can start with a different amount', () => {
+    const state = play(lobby(3), setBuyIn(B, 2500));
+    assert.deepEqual(stacks(state), [1000, 2500, 1000]);
+    assert.deepEqual(stacks(play(state, { type: 'startGame' })), [1000, 2495, 990]);
+  });
+
+  test('changing the usual amount leaves their own amount alone', () => {
+    const state = play(lobby(3), setBuyIn(B, 2500), options(500));
+    assert.deepEqual(stacks(state), [500, 2500, 500]);
+  });
+
+  test('once the usual amount matches theirs, they follow it again', () => {
+    const state = play(lobby(2), setBuyIn(B, 500), options(500), options(800));
+    assert.deepEqual(stacks(state), [800, 800]);
+  });
+
+  test('a new game starts everyone back on their own amount', () => {
+    const state = play(lobby(3), setBuyIn(C, 300), { type: 'startGame' }, FOLD, FOLD, award(), END_GAME);
+    assert.deepEqual(stacks(state), [1000, 1000, 300]);
+  });
+
+  test('a bad or unchanged amount is refused, and only in the lobby', () => {
+    throwsCode(() => play(lobby(2), setBuyIn(A, 0)), 'bad-amount');
+    throwsCode(() => play(lobby(2), setBuyIn(A, 12.5)), 'bad-amount');
+    throwsCode(() => play(lobby(2), setBuyIn(A, 1000)), 'no-change');
+    throwsCode(() => play(started(2), setBuyIn(A, 50)), 'wrong-phase');
+  });
+
+  test('a saved game with uneven starting stacks restores, before and during play', () => {
+    const session = createSession();
+    for (const action of [
+      { type: 'addPlayer', name: 'Ann' },
+      { type: 'addPlayer', name: 'Ben' },
+      setBuyIn(B, 4000),
+    ]) {
+      session.dispatch(action, session.version);
+    }
+    assert.equal(createSession(session.serialize()).damage, null);
+    session.dispatch({ type: 'startGame' }, session.version);
+    const restored = createSession(session.serialize());
+    assert.equal(restored.damage, null);
+    assert.deepEqual(restored.view.players.map((p) => p.stack), [995, 3990]);
+    assert.equal(describeAction(lobby(2), setBuyIn(B, 4000)), 'Ben starts with 4,000');
+  });
+});

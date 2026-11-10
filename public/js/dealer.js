@@ -97,7 +97,11 @@ const actions = createActions({
 });
 
 const sheet = createAmountSheet({ actions, onChange: syncLocks });
-const lobby = createLobby({ actions, hideNotice });
+const lobby = createLobby({
+  actions,
+  hideNotice,
+  openBuyIn: (game, player) => sheet.openBuyIn(game, player),
+});
 const manage = createManage({
   actions,
   hideNotice,

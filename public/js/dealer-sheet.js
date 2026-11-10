@@ -108,6 +108,31 @@ export function setStackJob({ options }, player) {
   };
 }
 
+// Before a game: what one player starts with, when it isn't the table's usual amount.
+export function buyInJob({ options }, player) {
+  const { startingChips, bigBlind } = options;
+  return {
+    title: player.name,
+    info: `Everyone else starts with ${chips(startingChips)}`,
+    label: 'Starts with',
+    range: { min: 1, max: ANY_CHIPS },
+    step: bigBlind,
+    start: player.stack,
+    presets: [
+      { label: 'Half', to: Math.ceil(startingChips / 2) },
+      { label: 'Usual', to: startingChips },
+      { label: 'Double', to: startingChips * 2 },
+    ],
+    accepts: (to) => to !== player.stack,
+    describe(to) {
+      if (to === null) return 'Whole chips, above zero';
+      return to === startingChips ? 'The same as everyone else' : 'Only for this player';
+    },
+    confirmLabel: (to) => (to === null ? 'Set chips' : `Start with ${chips(to)}`),
+    action: (stack) => ({ type: 'setBuyIn', id: player.id, stack }),
+  };
+}
+
 const CHIP_JOBS = { add: addChipsJob, set: setStackJob };
 
 export function createAmountSheet({ actions, onChange }) {
@@ -248,6 +273,11 @@ export function createAmountSheet({ actions, onChange }) {
     openRaise(game, player) {
       modes.hidden = true;
       show(raiseJob(game, player));
+      actions.guard(OPEN_GUARD_MS);
+    },
+    openBuyIn(game, player) {
+      modes.hidden = true;
+      show(buyInJob(game, player));
       actions.guard(OPEN_GUARD_MS);
     },
     openChips(game, player) {

@@ -1,7 +1,7 @@
 // Setting up the table before a game. The fields keep what was typed until the server has it, so
 // a broadcast can't wipe a half finished edit, and Start game never ignores what is on screen.
 
-import { $, button, h, icon, keepDigits } from './dealer-dom.js';
+import { $, button, chips, h, icon, keepDigits } from './dealer-dom.js';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 9;
@@ -43,7 +43,7 @@ export function seatButtons({ player, index, total, move, remove }) {
   ];
 }
 
-export function createLobby({ actions, hideNotice }) {
+export function createLobby({ actions, hideNotice, openBuyIn }) {
   const root = $('#lobby');
   const seats = $('#seats');
   const count = $('#seat-count');
@@ -96,6 +96,23 @@ export function createLobby({ actions, hideNotice }) {
     if (await actions.dispatch(...edits, { type: 'startGame' })) nameField.value = '';
   }
 
+  // Lit up when it differs from Starting chips, so an odd stack is easy to spot before dealing.
+  function stackButton(player) {
+    const isOwn = player.stack !== game.options.startingChips;
+    return h(
+      'button',
+      {
+        type: 'button',
+        class: isOwn ? 'seat-stack own' : 'seat-stack',
+        'aria-label': `${player.name} starts with ${chips(player.stack)}`,
+        'data-lock': true,
+        'data-action': 'buy-in',
+        click: () => openBuyIn(game, player),
+      },
+      chips(player.stack),
+    );
+  }
+
   function seatRow(player, index) {
     const isDealer = player.id === game.dealerId;
     return h(
@@ -114,6 +131,7 @@ export function createLobby({ actions, hideNotice }) {
         h('span', { class: isDealer ? 'dealer-chip' : 'seat-number' }, isDealer ? 'D' : index + 1),
         h('span', { class: 'seat-name' }, player.name),
       ),
+      stackButton(player),
       seatButtons({
         player,
         index,

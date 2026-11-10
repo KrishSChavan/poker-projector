@@ -4,7 +4,7 @@
 import { GameError, applyAction, createGame, describeAction, toView } from './engine.js';
 
 const UNDO_LIMIT = 300;
-const LOBBY_EDITS = new Set(['addPlayer', 'removePlayer', 'movePlayer', 'setDealer', 'setOptions']);
+const LOBBY_EDITS = new Set(['addPlayer', 'removePlayer', 'movePlayer', 'setDealer', 'setOptions', 'setBuyIn']);
 const PHASES = new Set([
   'lobby',
   'betting',
@@ -20,7 +20,8 @@ function isUsableState(state) {
   try {
     const { phase, players, options, pot } = toView(state);
     const chips = players.reduce((total, player) => total + player.stack, pot.total);
-    const expected = state.tableChips ?? players.length * options.startingChips;
+    const buyIn = (id) => state.buyIns?.[id] ?? options.startingChips;
+    const expected = state.tableChips ?? players.reduce((total, { id }) => total + buyIn(id), 0);
     return PHASES.has(phase) && chips === expected;
   } catch {
     return false;

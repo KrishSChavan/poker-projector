@@ -1124,6 +1124,15 @@ ul {
   font-variant-numeric: tabular-nums;
 }
 
+button.seat-stack {
+  min-height: var(--target);
+  border-radius: 8px;
+}
+
+.seat-stack.own {
+  color: var(--accent);
+}
+
 .seat-stack.out {
   color: var(--muted);
 }

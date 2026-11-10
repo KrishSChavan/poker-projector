@@ -87,9 +87,13 @@ export function createGame() {
     players: [],
     nextPlayerNumber: 1,
     dealerId: null,
+    buyIns: {}, // starting stacks that differ from options.startingChips, by player id
     ...clearedTable(),
   };
 }
+
+// What a player starts a game with. Saves from before buy-ins have none.
+const buyInOf = (state, id) => state.buyIns?.[id] ?? state.options.startingChips;
 
 function cleanName(name, players) {
   const clean = typeof name === 'string' ? name.trim() : '';
@@ -118,6 +122,7 @@ function addPlayer(state, { name }) {
 function removePlayer(state, { id }) {
   requirePlayer(state, id);
   state.players = state.players.filter((player) => player.id !== id);
+  delete state.buyIns[id];
   if (state.dealerId === id) state.dealerId = state.players[0]?.id ?? null;
 }
 
@@ -149,7 +154,24 @@ function setOptions(state, { startingChips, smallBlind, bigBlind }) {
     throw new GameError('bad-options', 'Starting chips must be at least the big blind.');
   }
   state.options = { startingChips, smallBlind, bigBlind };
-  for (const player of state.players) player.stack = startingChips;
+  // Someone given their own amount keeps it, unless the default has caught up with it.
+  for (const [id, amount] of Object.entries(state.buyIns)) {
+    if (amount === startingChips) delete state.buyIns[id];
+  }
+  for (const player of state.players) player.stack = buyInOf(state, player.id);
+}
+
+function setBuyIn(state, { id, stack }) {
+  const player = requirePlayer(state, id);
+  if (!isChipCount(stack)) {
+    throw new GameError('bad-amount', 'Chips must be a whole number above zero.');
+  }
+  if (stack === player.stack) {
+    throw new GameError('no-change', 'They already start with that.');
+  }
+  if (stack === state.options.startingChips) delete state.buyIns[id];
+  else state.buyIns[id] = stack;
+  player.stack = stack;
 }
 
 function startGame(state) {
@@ -442,9 +464,8 @@ function nextHand(state) {
 }
 
 function endGame(state) {
-  const { startingChips } = state.options;
   state.phase = 'lobby';
-  state.players = state.players.map(({ id, name }) => createPlayer(id, name, startingChips));
+  state.players = state.players.map(({ id, name }) => createPlayer(id, name, buyInOf(state, id)));
   state.options = { ...state.options, ...state.lobbyBlinds };
   Object.assign(state, clearedTable());
 }
@@ -495,6 +516,7 @@ function unseatPlayer(state, { id }) {
   requirePlayer(state, id);
   if (state.dealerId === id) state.dealerId = clockwiseFrom(state, id).at(-2)?.id ?? null;
   state.players = state.players.filter((player) => player.id !== id);
+  delete state.buyIns[id];
   reopenTable(state);
 }
 
@@ -525,6 +547,7 @@ const RULES = new Map([
   ['movePlayer', { phases: LOBBY, run: movePlayer }],
   ['setDealer', { phases: LOBBY, run: setDealer }],
   ['setOptions', { phases: LOBBY, run: setOptions }],
+  ['setBuyIn', { phases: LOBBY, run: setBuyIn }],
   ['startGame', { phases: LOBBY, run: startGame }],
   ['fold', { phases: BETTING, run: fold }],
   ['check', { phases: BETTING, run: check }],
@@ -555,6 +578,7 @@ export function applyAction(state, action) {
     ...state,
     options: { ...state.options },
     players: state.players.map((player) => ({ ...player })),
+    buyIns: { ...state.buyIns },
   };
   rule.run(next, action);
   return next;
@@ -639,6 +663,8 @@ export function describeAction(state, action) {
       return `${nameOf(action.id)} starts as dealer`;
     case 'setOptions':
       return 'Changed the game options';
+    case 'setBuyIn':
+      return `${nameOf(action.id)} starts with ${chips(action.stack)}`;
     case 'startGame':
       return 'Started the game';
     case 'fold':
